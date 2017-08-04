@@ -1,0 +1,44 @@
+131
+
+ [0] APP
+ 2.0.0.0:0 [0] APP
+ 3.0.0.0:0 [0] APP
+ 4.0.0.0:0 [0] APP
+ 5.0.0.0:0 [0] APP
+ 6.0.0.0:0 [0] APP
+ 7.0.0.0:0 [0] APP
+ 8.0.0.0:0 [0] APP
+ 9.0.0.0:0 [0] APP
+ 10.0.0.0:0 [0] APP
+ 4.0.0.0:0 [0] Trying to join...
+ 3.0.0.0:0 [0] Trying to join...
+ 2.0.0.0:0 [0] Trying to join...
+ 1.0.0.0:0 [0] Starting up group...
+ 8.0.0.0:0 [1] Trying to join...
+ 7.0.0.0:0 [1] Trying to join...
+ 6.0.0.0:0 [1] Trying to join...
+ 5.0.0.0:0 [1] Trying to join...
+ 1.0.0.0:0 [1] Node 2.0.0.0:0 joined at time 1
+ 1.0.0.0:0 [1] Node 3.0.0.0:0 joined at time 1
+ 1.0.0.0:0 [1] Node 4.0.0.0:0 joined at time 1
+ 10.0.0.0:0 [2] Trying to join...
+ 9.0.0.0:0 [2] Trying to join...
+ 1.0.0.0:0 [2] Node 5.0.0.0:0 joined at time 2
+ 1.0.0.0:0 [2] Node 6.0.0.0:0 joined at time 2
+ 1.0.0.0:0 [2] Node 7.0.0.0:0 joined at time 2
+ 1.0.0.0:0 [2] Node 8.0.0.0:0 joined at time 2
+ 1.0.0.0:0 [3] Node 9.0.0.0:0 joined at time 3
+ 1.0.0.0:0 [3] Node 10.0.0.0:0 joined at time 3
+ 6.0.0.0:0 [4] Node failed at time=4
+ 10.0.0.0:0 [24] Node 6.0.0.0:0 removed at time 24
+ 10.0.0.0:0 [24] Node 5.0.0.0:0 removed at time 24
+ 10.0.0.0:0 [24] Node 4.0.0.0:0 removed at time 24
+ 10.0.0.0:0 [25] Node 6.0.0.0:0 removed at time 25
+ 3.0.0.0:0 [25] Node 6.0.0.0:0 removed at time 25
+ 10.0.0.0:0 [26] Node 6.0.0.0:0 removed at time 26
+ 4.0.0.0:0 [26] Node 6.0.0.0:0 removed at time 26
+ 3.0.0.0:0 [26] Node 6.0.0.0:0 removed at time 26
+ 5.0.0.0:0 [27] Node 6.0.0.0:0 removed at time 27
+ 3.0.0.0:0 [27] Node 6.0.0.0:0 removed at time 27
+ 3.0.0.0:0 [28] Node 6.0.0.0:0 removed at time 28
+ 3.0.0.0:0 [29] Node 6.0.0.0:0 removed at time 29

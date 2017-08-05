@@ -308,7 +308,7 @@ void MP1Node::nodeLoopOps() {
 		}
 	}
 	//print membership list
-	printML();
+	//cout<<L();
 	//gossip th membership list
 	gossip_out();
     return;
@@ -446,8 +446,8 @@ void MP1Node:: handle_reply  (char* data, int size){
 	entry_size = sizeof(Address) + 1 + sizeof (long);
 	entries = real_size / entry_size;
 
-	printAddress(&memberNode->addr);
-	cout<< "Got a reply message with "<<entries<< " entries"<<endl;
+	//printAddress(&memberNode->addr);
+	//cout<< "Got a reply message with "<<entries<< " entries"<<endl;
 
 	//For each entry sent
 	for (i=0; i<entries-1; i++){
@@ -504,7 +504,7 @@ void MP1Node:: handle_gossip_in  (char* data, int size){
 	// printAddress(&memberNode->addr);
 	// cout<< "Got a gossip with "<<entries<< " entries. "<< real_size<<"real_size. "
 	// <<entry_size<<"entry size"<<endl;
-	cout<< "Gossip in"<<endl;
+	//cout<< "Gossip in"<<endl;
 
 
 	//get the start of the entry
@@ -661,7 +661,7 @@ void MP1Node:: gossip_out (){
 		sent_gossips++;
 	}
 	// printAddress(&memberNode->addr);
-	// cout<< " Sent out "<< sssent_gossips<< " entries"<<endl;
+	// //cout<< " Sent out "<< sssent_gossips<< " entries"<<endl;
 
 	//printML();
 

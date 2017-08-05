@@ -20,6 +20,7 @@
  */
 #define TREMOVE 20
 #define TFAIL 5
+#define gossip_nodes 3
 
 /*
  * Note: You can change/add any functions in MP1Node.{h,cpp}
@@ -31,7 +32,7 @@
 enum MsgTypes{
     JOINREQ,
     JOINREP,
-    HEARTBEAT,
+    GOSSIP,
     DUMMYLASTMSGTYPE
 };
 
@@ -78,15 +79,19 @@ public:
 	void printAddress(Address *addr);
 	virtual ~MP1Node();
 
-    //additional Helper functions
-    bool handle_request(char *addr, long heartbeat);
-    bool handle_reply(char *addr, long heartbeat);
-    bool handle_heartbeat(char *addr, long heartbeat);
+    //helper functions
+    void addr2Entry(MemberListEntry& entry, Address addr, long heartbeat,long local_time);
+    //void entry2Addr(MemberListEntry& entry, Address addr, long heartbeat, long timestamp);
+    void entry2Msg();
+    void msg2var(char* addr_ptr, int& id, short& port, long& heartbeat);
 
-    void member_unicast (char* to_addr, MsgTypes msg_type);
-    bool gossip_multicast();
+    void handle_request (char* data, int size);
+    void handle_reply  (char* data, int size);
+    void handle_gossip_in  (char* data, int size);
 
-    void translate_MLE (Address* conv_addr, MemberListEntry* conv_entry);
+    void send_list (Address * to_addr, int no, MsgTypes type);
+    void gossip_out ();
+
     void printML();
 };
 

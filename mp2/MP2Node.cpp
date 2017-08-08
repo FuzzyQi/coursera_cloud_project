@@ -51,12 +51,22 @@ void MP2Node::updateRing() {
 	 */
 	// Sort the list based on the hashCode
 	sort(curMemList.begin(), curMemList.end());
+	//update the ring if needed by comparing ring with curMemList
+	// Compare their sizes
+	// Compare each entry
+	if (curMemList.size() != ring.size()){
+		change = true;
+		//copy over new data
 
+	}
 
 	/*
 	 * Step 3: Run the stabilization protocol IF REQUIRED
 	 */
 	// Run stabilization protocol if the hash table size is greater than zero and if there has been a changed in the ring
+	if (change && (!ht->isEmpty())){
+		stabilizationProtocol();
+	}
 }
 
 /**
@@ -171,6 +181,10 @@ bool MP2Node::createKeyValue(string key, string value, ReplicaType replica) {
 	 * Implement this
 	 */
 	// Insert key, value, replicaType into the hash table
+	//make a key value entry using the value and replica type
+	Entry new_entry(value, par->getcurrtime(), replica);
+	//create the entry in the hash table as a string
+	return ht->create(key, new_entry.convertToString());
 }
 
 /**
@@ -186,6 +200,7 @@ string MP2Node::readKey(string key) {
 	 * Implement this
 	 */
 	// Read key from local hash table and return value
+	return ht->read(key);
 }
 
 /**
@@ -201,6 +216,10 @@ bool MP2Node::updateKeyValue(string key, string value, ReplicaType replica) {
 	 * Implement this
 	 */
 	// Update key in local hash table and return true or false
+	//get updated entry
+	Entry updated_entry (value, par->getcurrtime(), replica);
+	//update the hash table entry
+	return ht->update (key, updated_entry.convertToString());
 }
 
 /**
@@ -216,6 +235,7 @@ bool MP2Node::deletekey(string key) {
 	 * Implement this
 	 */
 	// Delete the key from the local hash table
+	return ht->deleteKey(key);
 }
 
 /**

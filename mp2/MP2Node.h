@@ -19,6 +19,10 @@
 #include "Message.h"
 #include "Queue.h"
 
+// Macros
+#define QUORUM_CNT 2
+#define TIMEOUT 20
+
 /**
  * CLASS NAME: MP2Node
  *
@@ -47,6 +51,14 @@ private:
 	EmulNet * emulNet;
 	// Object of Log
 	Log * log;
+	// 	ID:No of Success replies:
+	//key: value
+	//vector<int, int> success_map;
+	map <int, int> quorum_map;			//id : quorum cnt
+	map <int, long> request_time_map;	//id vs time
+	map <int, Message*> message_cache;	//id : msg ptr
+	map <int, string> read_cache;
+	//vector <Message> message_cache;
 
 public:
 	MP2Node(Member *memberNode, Params *par, EmulNet *emulNet, Log *log, Address *addressOfMember);
@@ -87,6 +99,25 @@ public:
 
 	// stabilization protocol - handle multiple failures
 	void stabilizationProtocol();
+
+
+	//Helper Functions
+	void dissectMsg( char* data,  int& inID, Address& inAddr, MessageType& type,
+					string& iKey, string& iValue, ReplicaType replica, int size);
+	ReplicaType getReplicaType (string ikey);
+	void sortArchives();
+	void archiveAdd(Message& imsg);
+	void logTrans(MessageType type, bool isCoordinator, int transID,
+		string key, string value, bool success);
+
+	//message handlers
+	void switchBoard(Message& imsg);
+	void handle_create( Message& imsg);
+	void handle_read( Message& imsg);
+	void handle_update( Message& imsg);
+	void handle_delete( Message& imsg);
+	void handle_reply( Message& imsg);
+	void handle_readreply( Message& imsg);
 
 	~MP2Node();
 };

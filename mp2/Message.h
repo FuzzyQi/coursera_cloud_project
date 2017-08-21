@@ -18,12 +18,12 @@
 class Message{
 public:
 	MessageType type;
-	ReplicaType replica;
+	ReplicaType replica; //replica that the message is coming from
 	string key;
 	string value;
 	Address fromAddr;
 	int transID;
-	bool success; // success or not 
+	bool success; // success or not
 	// delimiter
 	string delimiter;
 	// construct a message from a string

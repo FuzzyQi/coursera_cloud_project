@@ -52,19 +52,17 @@ void MP2Node::updateRing() {
 	// Sort the list based on the hashCode
 	sort(curMemList.begin(), curMemList.end());
 	//update the ring if needed by comparing ring with curMemList
-	// Compare their sizes
-	// Compare each entry
+	// Compare each entry if necessary
 	if (curMemList.size() != ring.size()){
 		change = true;
 		//copy over new data
 		ring = curMemList;
-
 	}
 
 	/*
 	 * Step 3: Run the stabilization protocol IF REQUIRED
 	 */
-	// Run stabilization protocol if the hash table size is greater than zero and if there has been a changed in the ring
+	// Run stabilization protocol
 	if (change && (!ht->isEmpty())){
 		stabilizationProtocol();
 	}
@@ -126,7 +124,6 @@ void MP2Node::clientCreate(string key, string value) {
 	 * IMPLELENTED
 	 */
 	 //local variables
-	 int test =0;
 	 vector <Node> r_nodes;
 	 vector <Node> :: iterator ring_it;
 	 //Create a create message to be sent to the servers
@@ -158,7 +155,6 @@ void MP2Node::clientRead(string key){
 	 * Implement this
 	 */
 	 //local variables
-	 int test =0;
 	 vector <Node> r_nodes;
 	 vector <Node> :: iterator ring_it;
 	 //Create a create message to be sent to the servers
@@ -190,7 +186,6 @@ void MP2Node::clientUpdate(string key, string value){
 	 * Implement this
 	 */
 	 //local variables
-	 int test =0;
 	 vector <Node> r_nodes;
 	 vector <Node> :: iterator ring_it;
 	 //Create an update message to be sent to the replicas
@@ -221,7 +216,6 @@ void MP2Node::clientDelete(string key){
 	 * IMPLELENTED
 	 */
 	 //local variables
-	 int test =0;
 	 vector <Node> r_nodes;
 	 vector <Node> :: iterator ring_it;
 	 //Create a delete message to be sent to the servers
@@ -362,7 +356,17 @@ void MP2Node::checkMessages() {
 
 
 /////////////////////////////////	MESSAGE HANDLERS 	///////////////////////
-// Handles a create message
+/**
+ * FUNCTION NAME: handle_Create
+ *
+ * DESCRIPTION: Handles a request message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Creates a Key Value pair & logs a failure or success
+ */
 void MP2Node ::handle_create( Message& imsg){
 	//local variables
 	ReplicaType my_replica;
@@ -380,8 +384,6 @@ void MP2Node ::handle_create( Message& imsg){
 	}
 
 	//Perfrom operation and send a reply to the coordinator
-	//Archive the messsage
-	//archiveAdd(imsg);
 	//perofrm op & log if success or failure
 	status = createKeyValue(imsg.key, imsg.value, my_replica);
 	if (status){
@@ -389,7 +391,6 @@ void MP2Node ::handle_create( Message& imsg){
 		 				imsg.transID, imsg.key, imsg.value);
 	}
 	else{
-		cout<<"create failed"<<endl;
 		log->logCreateFail(&memberNode->addr, false,
 		 				imsg.transID, imsg.key, imsg.value);
 	}
@@ -397,28 +398,32 @@ void MP2Node ::handle_create( Message& imsg){
 	Message reply(imsg.transID, memberNode->addr, REPLY, status);
 	emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
 	 					reply.toString());
-	//update has & have my replicas
-
 }
 
 
-// Handles a read message
+/**
+ * FUNCTION NAME: handle_Read
+ *
+ * DESCRIPTION: Handles a read message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Reads and returns the value of a given key
+ *					logs a failure or success
+ */
 void MP2Node ::handle_read( Message& imsg){
 	//local variables
 	string oValue;
-
-	//cooordinator has most recent, so just send out a readreply
-
-	//Perfrom operation and send a reply to the coordinator
-	//perofrm op & log if success or failure
 	oValue = readKey(imsg.key);
-
+	//Check if key exists
 	if (oValue == ""){
-		cout<<"read failed"<<endl;
 		log->logReadFail(&memberNode->addr, false,
 		 				imsg.transID, imsg.key);
 	}
 	else{
+		//Get the entry, log it then send to coordinator
 		Entry oEntry(oValue);
 		log->logReadSuccess(&memberNode->addr, false,
 		 				imsg.transID, imsg.key, oEntry.value);
@@ -427,54 +432,55 @@ void MP2Node ::handle_read( Message& imsg){
 		emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
 		 					read_reply.toString());
 	}
-
 }
 
 
-
-// Handles an update message
+/**
+ * FUNCTION NAME: handle_update
+ *
+ * DESCRIPTION: Handles an update message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Updates the value of a given key if it exists
+ *					logs a failure or success
+ *					Also processes update messages from primary replicas
+ */
 void MP2Node ::handle_update( Message& imsg){
-	//local variables
-
-	//if replica type is not primary, update replica type too
-
-	//Same as create
 	//local variables
 	ReplicaType my_replica;
 	vector <Node> replica_vect = findNodes(imsg.key);
 	bool status = false;
 	bool flag = false;
-	//map<string, string> :: iterator it = ht->hashTable.begin();
 
-
-	//get replica type of this node for this key
+	//get replica type
 	my_replica = getReplicaType(imsg.key, memberNode->addr);
-	//if unknoown, send to correct replicas
+	//if unknoown, it is from coordinator
 		if (imsg.replica == UNKNOWN){
-			//came from the client : perform update normally
-			//update etnry in the hash tabe
+			//Update if key exists
 			if (ht->hashTable.find(imsg.key) != ht->hashTable.end()){
-				//key exists: insert new value
 				status = updateKeyValue(imsg.key, imsg.value, my_replica);
 			}
+			//log & send value on successful update
 			if (status){
-				//success
 				log->logUpdateSuccess(&memberNode->addr, false, imsg.transID,
 					imsg.key, imsg.value);
-				//send success to coord
 				Message reply(imsg.transID, memberNode->addr, REPLY, status);
 				emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
 				 					reply.toString());
 			}
+			//log faulure
 			else{
 				//key does not exist: failed update
 				log->logUpdateFail(&memberNode->addr, false,
 					imsg.transID,imsg.key, imsg.value);
 			}
 		}
+		//It came from one of the primary replicas
 		else{
-			//Did not come from client: came from leader
-			//update your have vectors list if needed
+			//Add to vector list if not already there
 			for (auto& it : haveReplicasOf){
 				//flag if you find it
 				if (imsg.fromAddr == it.nodeAddress)
@@ -483,24 +489,29 @@ void MP2Node ::handle_update( Message& imsg){
 			if (!flag)
 				haveReplicasOf.push_back(imsg.fromAddr);
 
-			//if it does not exist
+			//if it does not exist, create it, else, update it
 			if (ht->hashTable.find(imsg.key) == ht->hashTable.end()){
-				//doesnt exist: create it
 				createKeyValue(imsg.key, imsg.value, imsg.replica);
 			}
 			else{
 				updateKeyValue(imsg.key, imsg.value, my_replica);
 			}
 		}
-
-
-
-
 }
 
 
-
-// Handles a delete message
+/**
+ * FUNCTION NAME: handle_delete
+ *
+ * DESCRIPTION: Handles a delete message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Deletes a given key-value entry if it exists
+ *					logs a failure or success
+ */
 void MP2Node ::handle_delete( Message& imsg){
 	//local variables
 	ReplicaType my_replica;
@@ -517,10 +528,7 @@ void MP2Node ::handle_delete( Message& imsg){
 		return;
 	}
 
-	//Perfrom operation and send a reply to the coordinator
-	//Archive the messsage
-	//archiveAdd(imsg);
-	//perofrm op & log if success or failure
+	//Delete eht key, and log a failure or success
 	status = deletekey(imsg.key);
 	if (status){
 		log->logDeleteSuccess(&memberNode->addr, false,
@@ -531,18 +539,26 @@ void MP2Node ::handle_delete( Message& imsg){
 		log->logDeleteFail(&memberNode->addr, false,
 						imsg.transID, imsg.key);
 	}
-	//send success to coord
+	//send success message to coord
 	Message reply(imsg.transID, memberNode->addr, REPLY, status);
 	emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
 						reply.toString());
-	//update has & have my replicas
 }
 
-// Handles a reply message
-void MP2Node ::handle_reply( Message& imsg){
-	//local variables
 
-	//check if it was a success
+/**
+ * FUNCTION NAME: handle_reply
+ *
+ * DESCRIPTION: Handles a reply message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Updates the quorum count for a success reply message
+ */
+void MP2Node ::handle_reply( Message& imsg){
+	//If it was a success reply, update quorum count
 	if (imsg.success){
 		//update quorum cnt if already there
 		if (quorum_map.find(imsg.transID) != quorum_map.end()){
@@ -552,41 +568,39 @@ void MP2Node ::handle_reply( Message& imsg){
 		else
 			cout << "ERROR : DELETED "<<endl;
 	}
-
-
 }
 
 // Handles a readreply message
+/**
+ * FUNCTION NAME: handle_readreply
+ *
+ * DESCRIPTION: Handles a readreply message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Stores the read reply locally if it is the most up to date
+ */
 void MP2Node ::handle_readreply( Message& imsg){
-	//local variables
-
-	//update the quorum replies
-
-	//value is an entry == value:timestamp:replica
-	//archive read msg if not already there
+	//Add to the cache if not already there
 	if (read_cache.find(imsg.transID) ==read_cache.end() ){
 		//archive the value in the read cache
 		read_cache.emplace(make_pair(imsg.transID, imsg.value));
 
 	}
+	//Replace in cache only if it has a newer timestamp
 	else{
-		//if we've gotten a reply from at least one other replica
-		//if newer timestamp, replace in messge queue
 		Entry i_entry(imsg.value);
 		Entry str_entry(read_cache[imsg.transID]);
 		if (i_entry.timestamp>str_entry.timestamp){
 			//replace with the input message
 			read_cache[imsg.transID] = imsg.value;
 		}
-
 	}
-	//update quorum count for the original read
+	//update quorum count for the original read message
 	quorum_map[imsg.transID]++;
-
 }
-
-
-
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -596,6 +610,17 @@ void MP2Node ::handle_readreply( Message& imsg){
 
 /////////////////////////////////	HELPER FUNCTIONS	////////////////////////
 //routes to correct handler
+/**
+ * FUNCTION NAME: switchBoard
+ *
+ * DESCRIPTION: Handles all input message
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ *Functionality : Calls the function that handles the specific message
+ */
 void MP2Node ::switchBoard(Message& imsg){
 	//send to to message handler
 	switch (imsg.type){
@@ -615,6 +640,17 @@ void MP2Node ::switchBoard(Message& imsg){
 
 
 //Function that adds a message to the archives
+/**
+ * FUNCTION NAME: archiveAdd
+ *
+ * DESCRIPTION: Stores a message locally with the local time
+ *					& starts a quorum count
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ *
+ */
 void MP2Node ::archiveAdd(Message& imsg){
 	//local variables
 	Message *archive_msg = NULL;
@@ -625,26 +661,32 @@ void MP2Node ::archiveAdd(Message& imsg){
 	quorum_map.emplace(make_pair(imsg.transID, 0));
 	//store current time
 	request_time_map.emplace(make_pair(imsg.transID, par->getcurrtime()));
-	//Send message out to replicas
 }
 
 
 //function sorts through archived messages
+/**
+ * FUNCTION NAME: sortArchives
+ *
+ * DESCRIPTION: Checks if quorum has been reached for each message
+ *					Also checks if any message requests have timed out
+ *					Logs success or failure from the coordinators side
+ *
+ * Inputs : imsg - Message that came in
+ *
+ * Return Value : nothing
+ */
 void MP2Node ::sortArchives(){
 	//local variables
-	//auto& quorum_it = quorum_map.begin();
-	//auto& msg_it = message_cache.begin();
 	string val;
 	long cur_time = par->getcurrtime();
 	map <int, int> :: iterator quorum_it = quorum_map.begin();
 
-	//for each member in the map
-	//for ( ; quorum_it != quorum_map.end(); quorum_it++, msg_it++){
-	//for (auto& quorum_it : quorum_map){
+	//for each message request waiting on replicas
 	for (; quorum_it != quorum_map.end(); quorum_it++){
 		Message target_msg = *message_cache[quorum_it->first];
 		val = target_msg.value;
-		//get entry if it was a read message
+		//If read msg, get the value
 		if (target_msg.type == READ){
 			//get reply value from the read cache
 			if (read_cache.find(quorum_it->first) != read_cache.end()){
@@ -652,15 +694,11 @@ void MP2Node ::sortArchives(){
 				Entry read_entry(read_cache[quorum_it->first]);
 				val = read_entry.value;
 			}
-
 		}
 		//check if quorum has been achieved & we've given enough time
 		if ((quorum_it->second >= QUORUM_CNT) &&
 				((cur_time -request_time_map[quorum_it->first] )>=WAITING)){
 			//log as completed by coordinator
-			// log->logCreateSuccess(&memberNode->addr, true,
-			// 	quorum_it->first, message_cache[quorum_it->first]-> key,
-			// 	message_cache[quorum_it->first]-> value);
 			logTrans(target_msg.type, true, quorum_it->first, target_msg.key,
 				val, true);
 			//remove message & counts from the map
@@ -674,22 +712,16 @@ void MP2Node ::sortArchives(){
 			request_time_map.erase(quorum_it->first);
 			quorum_map.erase(quorum_it);
 		}
-		//check if message has timed out
+		//if message has timed out
 		else if ( (cur_time -request_time_map[quorum_it->first] )>=TIMEOUT){
-			//message has timed out, log as failed & delete
-			cout<<"TIMEOUT"<<endl;
-			// log->logCreateFail(&memberNode->addr, true,
-			// 	quorum_it->first, message_cache[quorum_it->first]-> key,
-			// 	message_cache[quorum_it->first]-> value);
+			//log as failed & delete
 			logTrans(target_msg.type, true, quorum_it->first, target_msg.key,
 				val, false);
-			//delete from maps
 			if (target_msg.type == READ){
-				//remove from read cache
+				//remove from read cache if necessary
 				if (read_cache.find(quorum_it->first) != read_cache.end()){
 					read_cache.erase(quorum_it->first);
 				}
-
 			}
 			//free memory
 			delete message_cache[quorum_it->first];
@@ -701,9 +733,21 @@ void MP2Node ::sortArchives(){
 }
 
 
-
-
-//function that logs a transaction success or failure for all crud ops
+/**
+ * FUNCTION NAME: logTrans
+ *
+ * DESCRIPTION: Logs any kind of message
+ *
+ * Inputs : type -type of message to log
+ *			isCoordinator - if coordinator is logging
+ *			transID  - the transaciton id
+ *			key  - the key of the request
+ *			value  - the value of the request
+ *			success - if request was a success
+ *
+ * Return Value : nothing
+ *
+ */
 void MP2Node ::logTrans(MessageType type, bool isCoordinator, int transID,
 	string key, string value, bool success){
 
@@ -756,13 +800,24 @@ void MP2Node ::logTrans(MessageType type, bool isCoordinator, int transID,
 
 
 //Finds the replica type of this node for a particular key
+/**
+ * FUNCTION NAME: logTrans
+ *
+ * DESCRIPTION: Logs any kind of message
+ *
+ * Inputs : key  - the key of the request
+ *			addr  - the address to check
+ *
+ * Return Value : nothing
+ *
+ */
 ReplicaType MP2Node ::getReplicaType (string ikey, Address addr){
 	//local variables
 	size_t i;
 	vector<Node> inodes;
 	//get all the nodes for this key
 	inodes = findNodes(ikey);
-	//Find out what replica
+	//Find out what replica addr is
 	for (i=0; i<inodes.size(); i++){
 		if (inodes[i].nodeAddress == addr){
 			switch (i){
@@ -776,10 +831,8 @@ ReplicaType MP2Node ::getReplicaType (string ikey, Address addr){
 }
 
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
+
 /**
  * FUNCTION NAME: findNodes
  *
@@ -835,6 +888,8 @@ int MP2Node::enqueueWrapper(void *env, char *buff, int size) {
 	Queue q;
 	return q.enqueue((queue<q_elt> *)env, (void *)buff, size);
 }
+
+
 /**
  * FUNCTION NAME: stabilizationProtocol
  *
@@ -846,32 +901,31 @@ int MP2Node::enqueueWrapper(void *env, char *buff, int size) {
  */
 void MP2Node::stabilizationProtocol() {
 	/*
-	 * Implement this
+	 * IMPLELENTED
 	 */
+	 //local variables
 	 vector <Node> replica_vect;
 	 ReplicaType new_type;
 	 string my_key;
 	 bool flag;
 	 map<string, string> :: iterator hash_it = ht->hashTable.begin();
-	 //vector <Node> vect_it;
-	 //for each entry  in my hash table
+
+	 //for each entry in my hash table: check if node was alwas primary
 	 for (; hash_it!=ht->hashTable.end(); hash_it++){
 		 my_key = hash_it->first;
-		 //What replica am i for this key?
+		 //Get the previous replica type of this node for this key
 		 Entry my_entry(hash_it->second);
 		 replica_vect = findNodes(my_key);
 		 new_type = getReplicaType(my_key, memberNode->addr);
-		//if i am the primary in the entry & am still the primary
+
+		//if node was always primary, and is still primary
 		 if ((my_entry.replica == PRIMARY) && (new_type==PRIMARY)){
-			 //Make sure everyone in the hasmyreplicas is alive
-			 // bool animateReplicas(vector <Node> cur_vect,vector<Node> new_vect);
-			  	//- true only if all are alive && vallid for this key
-				//also clears vector if any is dead
+			 //If any replicas have failed or joined
 			if (!animateReplicas(hasMyReplicas, replica_vect)){
-				//for each one, copy over, and send an update message
+				//for each node, copy over, and send an update message
 				for (auto& vect_it : replica_vect){
-					//send update message to new replica
 					new_type = getReplicaType(my_key, vect_it.nodeAddress);
+					//Don't send message to node-self
 					if (new_type != PRIMARY){
 						//copy over to the right vector if not already there
 						flag = false;
@@ -892,17 +946,16 @@ void MP2Node::stabilizationProtocol() {
 			}
 		 }
 		 else{
-			 //am I the new primary?
-			 //if so, replicate to the rest of the nodes w/ update msg
-			 //populate the hasmyreplicas vector from scratch
 			 new_type = getReplicaType(my_key, memberNode->addr);
+			 //If node is a new primary, populae right vector & send updates
 			 if (new_type == PRIMARY){
 				 hasMyReplicas.clear();
+				 //Send message to all other replicas
 				 for (auto& vect_it : replica_vect){
  					//send update message to new replica
  					new_type = getReplicaType(my_key, vect_it.nodeAddress);
 					if (new_type != PRIMARY){
-						//copy over to the right vector
+						//copy over to the relevant vector
 	 					hasMyReplicas.push_back(vect_it.nodeAddress);
 						Message up_msg(g_transID++, memberNode->addr, UPDATE,
 	 						 my_key, my_entry.value, new_type );
@@ -913,20 +966,24 @@ void MP2Node::stabilizationProtocol() {
 				//update type to primary
 				updateKeyValue(my_key, my_entry.value, PRIMARY);
 			 }
-			 if (new_type == UNKNOWN){
-				 cout<<"UNKNOWN TYPE"<<endl;
-				 //delete from hash table
-			 }
 		 }
 	 }
-
-	 //If i am the primary - use findNodes
-	 //
-
-	 //update my have and has replicas vectors
 }
 
-//function that checks if the old replicas are the nre replicas
+
+/**
+ * FUNCTION NAME: animateReplicas
+ *
+ * DESCRIPTION: Checks if all the replicas in the old vector
+ *					are in the new one.
+ *					Clears the old vector if they differ
+ *
+ * Inputs : old_vect
+ *			new_vect
+ *
+ * Return Value : same - boolean on if the vectors are the same
+ *
+ */
 bool MP2Node ::animateReplicas(vector<Node>old_vect, vector<Node>new_vect){
 	//local variables
 	bool same = true;
@@ -939,7 +996,6 @@ bool MP2Node ::animateReplicas(vector<Node>old_vect, vector<Node>new_vect){
 	for (; old_it!=old_vect.end(); old_it++){
 		//check if it is in the new oone
 		for (new_it= new_vect.begin(); new_it!=new_vect.end(); new_it++){
-			//check if they are the same
 			if (new_it->nodeAddress == old_it->nodeAddress)
 				same_cnt++;
 		}

@@ -195,7 +195,7 @@ void MP2Node::clientUpdate(string key, string value){
 	 vector <Node> :: iterator ring_it;
 	 //Create an update message to be sent to the replicas
 	 Message oMessage = Message (g_transID++, memberNode->addr,
-									UPDATE, key, value);
+									UPDATE, key, value, UNKNOWN);
 	 //update the ring
 	 updateRing();
 	 //find the replicas of this key
@@ -370,7 +370,7 @@ void MP2Node ::handle_create( Message& imsg){
 	bool status = false;
 
 	//get replica type of this node for this key
-	my_replica = getReplicaType(imsg.key);
+	my_replica = getReplicaType(imsg.key, memberNode->addr);
 	//if unknoown, send to correct replicas
 	if (my_replica == UNKNOWN){
 		cout << "RESENDING, STALE MEMBERSHIP LIST"<<endl;
@@ -412,28 +412,93 @@ void MP2Node ::handle_read( Message& imsg){
 	//Perfrom operation and send a reply to the coordinator
 	//perofrm op & log if success or failure
 	oValue = readKey(imsg.key);
-	Entry oEntry(oValue);
-	if (oValue.empty()){
+
+	if (oValue == ""){
 		cout<<"read failed"<<endl;
 		log->logReadFail(&memberNode->addr, false,
 		 				imsg.transID, imsg.key);
 	}
 	else{
+		Entry oEntry(oValue);
 		log->logReadSuccess(&memberNode->addr, false,
 		 				imsg.transID, imsg.key, oEntry.value);
+		//send success to coord
+		Message read_reply(imsg.transID, memberNode->addr, oValue);
+		emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
+		 					read_reply.toString());
 	}
-	//send success to coord
-	Message read_reply(imsg.transID, memberNode->addr, oValue);
-	emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
-	 					read_reply.toString());
+
 }
+
+
 
 // Handles an update message
 void MP2Node ::handle_update( Message& imsg){
 	//local variables
 
+	//if replica type is not primary, update replica type too
+
 	//Same as create
+	//local variables
+	ReplicaType my_replica;
+	vector <Node> replica_vect = findNodes(imsg.key);
+	bool status = false;
+	bool flag = false;
+	//map<string, string> :: iterator it = ht->hashTable.begin();
+
+
+	//get replica type of this node for this key
+	my_replica = getReplicaType(imsg.key, memberNode->addr);
+	//if unknoown, send to correct replicas
+		if (imsg.replica == UNKNOWN){
+			//came from the client : perform update normally
+			//update etnry in the hash tabe
+			if (ht->hashTable.find(imsg.key) != ht->hashTable.end()){
+				//key exists: insert new value
+				status = updateKeyValue(imsg.key, imsg.value, my_replica);
+			}
+			if (status){
+				//success
+				log->logUpdateSuccess(&memberNode->addr, false, imsg.transID,
+					imsg.key, imsg.value);
+				//send success to coord
+				Message reply(imsg.transID, memberNode->addr, REPLY, status);
+				emulNet->ENsend(&memberNode->addr, &imsg.fromAddr,
+				 					reply.toString());
+			}
+			else{
+				//key does not exist: failed update
+				log->logUpdateFail(&memberNode->addr, false,
+					imsg.transID,imsg.key, imsg.value);
+			}
+		}
+		else{
+			//Did not come from client: came from leader
+			//update your have vectors list if needed
+			for (auto& it : haveReplicasOf){
+				//flag if you find it
+				if (imsg.fromAddr == it.nodeAddress)
+					flag = true;
+			}
+			if (!flag)
+				haveReplicasOf.push_back(imsg.fromAddr);
+
+			//if it does not exist
+			if (ht->hashTable.find(imsg.key) == ht->hashTable.end()){
+				//doesnt exist: create it
+				createKeyValue(imsg.key, imsg.value, imsg.replica);
+			}
+			else{
+				updateKeyValue(imsg.key, imsg.value, my_replica);
+			}
+		}
+
+
+
+
 }
+
+
 
 // Handles a delete message
 void MP2Node ::handle_delete( Message& imsg){
@@ -443,7 +508,7 @@ void MP2Node ::handle_delete( Message& imsg){
 	bool status = false;
 
 	//get replica type of this node for this key
-	my_replica = getReplicaType(imsg.key);
+	my_replica = getReplicaType(imsg.key, memberNode->addr);
 	//if unknoown, send to correct replicas
 	if (my_replica == UNKNOWN){
 		cout << "RESENDING, STALE MEMBERSHIP LIST"<<endl;
@@ -691,7 +756,7 @@ void MP2Node ::logTrans(MessageType type, bool isCoordinator, int transID,
 
 
 //Finds the replica type of this node for a particular key
-ReplicaType MP2Node ::getReplicaType (string ikey){
+ReplicaType MP2Node ::getReplicaType (string ikey, Address addr){
 	//local variables
 	size_t i;
 	vector<Node> inodes;
@@ -699,7 +764,7 @@ ReplicaType MP2Node ::getReplicaType (string ikey){
 	inodes = findNodes(ikey);
 	//Find out what replica
 	for (i=0; i<inodes.size(); i++){
-		if (inodes[i].nodeAddress == memberNode->addr){
+		if (inodes[i].nodeAddress == addr){
 			switch (i){
 				case 0:	return PRIMARY;
 				case 1:	return SECONDARY;
@@ -783,11 +848,107 @@ void MP2Node::stabilizationProtocol() {
 	/*
 	 * Implement this
 	 */
-
+	 vector <Node> replica_vect;
+	 ReplicaType new_type;
+	 string my_key;
+	 bool flag;
+	 map<string, string> :: iterator hash_it = ht->hashTable.begin();
+	 //vector <Node> vect_it;
 	 //for each entry  in my hash table
+	 for (; hash_it!=ht->hashTable.end(); hash_it++){
+		 my_key = hash_it->first;
+		 //What replica am i for this key?
+		 Entry my_entry(hash_it->second);
+		 replica_vect = findNodes(my_key);
+		 new_type = getReplicaType(my_key, memberNode->addr);
+		//if i am the primary in the entry & am still the primary
+		 if ((my_entry.replica == PRIMARY) && (new_type==PRIMARY)){
+			 //Make sure everyone in the hasmyreplicas is alive
+			 // bool animateReplicas(vector <Node> cur_vect,vector<Node> new_vect);
+			  	//- true only if all are alive && vallid for this key
+				//also clears vector if any is dead
+			if (!animateReplicas(hasMyReplicas, replica_vect)){
+				//for each one, copy over, and send an update message
+				for (auto& vect_it : replica_vect){
+					//send update message to new replica
+					new_type = getReplicaType(my_key, vect_it.nodeAddress);
+					if (new_type != PRIMARY){
+						//copy over to the right vector if not already there
+						flag = false;
+						for (auto& it : haveReplicasOf){
+							//flag if you find it
+							if (vect_it.nodeAddress == it.nodeAddress)
+								flag = true;
+						}
+						if (!flag)
+							hasMyReplicas.push_back(vect_it.nodeAddress);
+						//send the message
+						Message up_msg(g_transID++, memberNode->addr, UPDATE,
+							 my_key, my_entry.value, new_type );
+						emulNet->ENsend (&memberNode->addr, &vect_it.nodeAddress,
+							 up_msg.toString() );
+					}
+				}
+			}
+		 }
+		 else{
+			 //am I the new primary?
+			 //if so, replicate to the rest of the nodes w/ update msg
+			 //populate the hasmyreplicas vector from scratch
+			 new_type = getReplicaType(my_key, memberNode->addr);
+			 if (new_type == PRIMARY){
+				 hasMyReplicas.clear();
+				 for (auto& vect_it : replica_vect){
+ 					//send update message to new replica
+ 					new_type = getReplicaType(my_key, vect_it.nodeAddress);
+					if (new_type != PRIMARY){
+						//copy over to the right vector
+	 					hasMyReplicas.push_back(vect_it.nodeAddress);
+						Message up_msg(g_transID++, memberNode->addr, UPDATE,
+	 						 my_key, my_entry.value, new_type );
+	 					emulNet->ENsend (&memberNode->addr, &vect_it.nodeAddress,
+	 						 up_msg.toString() );
+					}
+ 				}
+				//update type to primary
+				updateKeyValue(my_key, my_entry.value, PRIMARY);
+			 }
+			 if (new_type == UNKNOWN){
+				 cout<<"UNKNOWN TYPE"<<endl;
+				 //delete from hash table
+			 }
+		 }
+	 }
 
-	 //If i am the primary
+	 //If i am the primary - use findNodes
 	 //
 
 	 //update my have and has replicas vectors
+}
+
+//function that checks if the old replicas are the nre replicas
+bool MP2Node ::animateReplicas(vector<Node>old_vect, vector<Node>new_vect){
+	//local variables
+	bool same = true;
+	int same_cnt =0;
+	vector <Node> :: iterator old_it = old_vect.begin();
+	vector <Node> :: iterator new_it = new_vect.begin();
+
+
+	//iterat over both vectors and make sure they are the same
+	for (; old_it!=old_vect.end(); old_it++){
+		//check if it is in the new oone
+		for (new_it= new_vect.begin(); new_it!=new_vect.end(); new_it++){
+			//check if they are the same
+			if (new_it->nodeAddress == old_it->nodeAddress)
+				same_cnt++;
+		}
+	}
+	//The old vector is cleared if they don't match exactly
+	if (same_cnt !=2){
+		cout<<"new set of neighbors"<<endl;
+		old_vect.clear();
+		same = false;
+	}
+	return same;
 }

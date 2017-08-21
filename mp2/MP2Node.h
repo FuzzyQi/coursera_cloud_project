@@ -105,8 +105,9 @@ public:
 	//Helper Functions
 	void dissectMsg( char* data,  int& inID, Address& inAddr, MessageType& type,
 					string& iKey, string& iValue, ReplicaType replica, int size);
-	ReplicaType getReplicaType (string ikey);
+	ReplicaType getReplicaType (string ikey, Address addr);
 	void sortArchives();
+	bool animateReplicas(vector<Node>old_vect, vector<Node>new_vect);
 	void archiveAdd(Message& imsg);
 	void logTrans(MessageType type, bool isCoordinator, int transID,
 		string key, string value, bool success);

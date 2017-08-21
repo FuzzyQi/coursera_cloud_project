@@ -412,14 +412,15 @@ void MP2Node ::handle_read( Message& imsg){
 	//Perfrom operation and send a reply to the coordinator
 	//perofrm op & log if success or failure
 	oValue = readKey(imsg.key);
+	Entry oEntry(oValue);
 	if (oValue.empty()){
+		cout<<"read failed"<<endl;
 		log->logReadFail(&memberNode->addr, false,
 		 				imsg.transID, imsg.key);
 	}
 	else{
-		cout<<"read failed"<<endl;
 		log->logReadSuccess(&memberNode->addr, false,
-		 				imsg.transID, imsg.key, imsg.value);
+		 				imsg.transID, imsg.key, oEntry.value);
 	}
 	//send success to coord
 	Message read_reply(imsg.transID, memberNode->addr, oValue);
@@ -499,13 +500,19 @@ void MP2Node ::handle_readreply( Message& imsg){
 	//value is an entry == value:timestamp:replica
 	//archive read msg if not already there
 	if (read_cache.find(imsg.transID) ==read_cache.end() ){
-		//archive the message in the read cache
-		read_cache.emplace(make_pair<int, string>(imsg.transID, imsg.value));
+		//archive the value in the read cache
+		read_cache.emplace(make_pair(imsg.transID, imsg.value));
 
 	}
 	else{
 		//if we've gotten a reply from at least one other replica
 		//if newer timestamp, replace in messge queue
+		Entry i_entry(imsg.value);
+		Entry str_entry(read_cache[imsg.transID]);
+		if (i_entry.timestamp>str_entry.timestamp){
+			//replace with the input message
+			read_cache[imsg.transID] = imsg.value;
+		}
 
 	}
 	//update quorum count for the original read
@@ -562,6 +569,7 @@ void MP2Node ::sortArchives(){
 	//local variables
 	//auto& quorum_it = quorum_map.begin();
 	//auto& msg_it = message_cache.begin();
+	string val;
 	long cur_time = par->getcurrtime();
 	map <int, int> :: iterator quorum_it = quorum_map.begin();
 
@@ -570,15 +578,31 @@ void MP2Node ::sortArchives(){
 	//for (auto& quorum_it : quorum_map){
 	for (; quorum_it != quorum_map.end(); quorum_it++){
 		Message target_msg = *message_cache[quorum_it->first];
-		//check if quorum has been achieved
-		if (quorum_it->second >= QUORUM_CNT){
+		val = target_msg.value;
+		//get entry if it was a read message
+		if (target_msg.type == READ){
+			//get reply value from the read cache
+			if (read_cache.find(quorum_it->first) != read_cache.end()){
+				//if it exists
+				Entry read_entry(read_cache[quorum_it->first]);
+				val = read_entry.value;
+			}
+
+		}
+		//check if quorum has been achieved & we've given enough time
+		if ((quorum_it->second >= QUORUM_CNT) &&
+				((cur_time -request_time_map[quorum_it->first] )>=WAITING)){
 			//log as completed by coordinator
 			// log->logCreateSuccess(&memberNode->addr, true,
 			// 	quorum_it->first, message_cache[quorum_it->first]-> key,
 			// 	message_cache[quorum_it->first]-> value);
 			logTrans(target_msg.type, true, quorum_it->first, target_msg.key,
-				target_msg.value, true);
+				val, true);
 			//remove message & counts from the map
+			if (target_msg.type == READ){
+				//remove from read cache
+				read_cache.erase(quorum_it->first);
+			}
 			//free memory
 			delete message_cache[quorum_it->first];
 			message_cache.erase(quorum_it->first);
@@ -593,8 +617,15 @@ void MP2Node ::sortArchives(){
 			// 	quorum_it->first, message_cache[quorum_it->first]-> key,
 			// 	message_cache[quorum_it->first]-> value);
 			logTrans(target_msg.type, true, quorum_it->first, target_msg.key,
-				target_msg.value, false);
+				val, false);
 			//delete from maps
+			if (target_msg.type == READ){
+				//remove from read cache
+				if (read_cache.find(quorum_it->first) != read_cache.end()){
+					read_cache.erase(quorum_it->first);
+				}
+
+			}
 			//free memory
 			delete message_cache[quorum_it->first];
 			message_cache.erase(quorum_it->first);
@@ -752,6 +783,11 @@ void MP2Node::stabilizationProtocol() {
 	/*
 	 * Implement this
 	 */
+
+	 //for each entry  in my hash table
+
+	 //If i am the primary
+	 //
 
 	 //update my have and has replicas vectors
 }

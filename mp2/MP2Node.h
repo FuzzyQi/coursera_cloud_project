@@ -22,6 +22,7 @@
 // Macros
 #define QUORUM_CNT 2
 #define TIMEOUT 20
+#define WAITING 5
 
 /**
  * CLASS NAME: MP2Node

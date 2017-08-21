@@ -570,7 +570,7 @@ void MP2Node ::handle_reply( Message& imsg){
 	}
 }
 
-// Handles a readreply message
+
 /**
  * FUNCTION NAME: handle_readreply
  *
@@ -609,7 +609,6 @@ void MP2Node ::handle_readreply( Message& imsg){
 
 
 /////////////////////////////////	HELPER FUNCTIONS	////////////////////////
-//routes to correct handler
 /**
  * FUNCTION NAME: switchBoard
  *
@@ -639,7 +638,6 @@ void MP2Node ::switchBoard(Message& imsg){
 }
 
 
-//Function that adds a message to the archives
 /**
  * FUNCTION NAME: archiveAdd
  *
@@ -664,7 +662,6 @@ void MP2Node ::archiveAdd(Message& imsg){
 }
 
 
-//function sorts through archived messages
 /**
  * FUNCTION NAME: sortArchives
  *
@@ -799,11 +796,11 @@ void MP2Node ::logTrans(MessageType type, bool isCoordinator, int transID,
 
 
 
-//Finds the replica type of this node for a particular key
+
 /**
- * FUNCTION NAME: logTrans
+ * FUNCTION NAME: getReplicaType
  *
- * DESCRIPTION: Logs any kind of message
+ * DESCRIPTION: Finds the replica type for a given key & address
  *
  * Inputs : key  - the key of the request
  *			addr  - the address to check
